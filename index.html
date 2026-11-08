@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="IB-Protokoll">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+</head>
+<body><title>EGS IB-Protokoll</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#E0601F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: eine Spalte fuers Handy, Werkzeugleiste oben fixiert, jede Pruefung eine Karte mit Daumen-Knoepfen unten */
+:root {
+  --bg: #F3F2F0;
+  --card: #FFFFFF;
+  --ink: #1C1A18;
+  --muted: #69635D;
+  --line: #E1DDD8;
+  --accent: #D9581A;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #FBE7DB;
+  --ok: #1D7A44;      --ok-bg: #E2F2E8;
+  --fail: #B8321C;    --fail-bg: #FAE4DF;
+  --warn: #8F5600;    --warn-bg: #FFF0CC;
+  --na: #66625E;      --na-bg: #ECEAE7;
+  --field: #FFFFFF;
+  --shade: rgba(20, 18, 16, .86);
+  --f-head: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151413; --card: #201E1C; --ink: #F1EEEA; --muted: #A59E97; --line: #35322F;
+    --accent: #FF7B3A; --accent-ink: #1A0E07; --accent-soft: #3A2318;
+    --ok: #74D39C; --ok-bg: #173826; --fail: #FF8D76; --fail-bg: #3D1C16;
+    --warn: #FFC861; --warn-bg: #3A2B0D; --na: #B4AEA8; --na-bg: #2B2926;
+    --field: #191817; --shade: rgba(0, 0, 0, .9);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151413; --card: #201E1C; --ink: #F1EEEA; --muted: #A59E97; --line: #35322F;
+  --accent: #FF7B3A; --accent-ink: #1A0E07; --accent-soft: #3A2318;
+  --ok: #74D39C; --ok-bg: #173826; --fail: #FF8D76; --fail-bg: #3D1C16;
+  --warn: #FFC861; --warn-bg: #3A2B0D; --na: #B4AEA8; --na-bg: #2B2926;
+  --field: #191817; --shade: rgba(0, 0, 0, .9);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* auch ausserhalb der Vorschau (GitHub Pages) */
+body { background: var(--bg); color: var(--ink); font: 16px/1.45 var(--f-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--card); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Werkzeugleiste ---------- */
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--card); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px 0;
+}
+.bar-top { display: flex; align-items: center; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.brand-logo { height: 26px; width: auto; border-radius: 4px; background: #fff; padding: 2px 4px; }
+.brand h1 { margin: 0; font: 700 1.25rem/1.1 var(--f-head); letter-spacing: .01em; white-space: nowrap; }
+.progress { font: 600 .9rem var(--f-head); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.progress b { color: var(--ink); }
+.meter { height: 4px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.act { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 8px 4px; font-weight: 600; font-size: .9rem; }
+.act.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.jump { display: flex; gap: 6px; overflow-x: auto; padding-block: 10px; scrollbar-width: none; }
+.jump::-webkit-scrollbar { display: none; }
+.jump a { flex: none; text-decoration: none; color: var(--muted); font: 600 .85rem var(--f-head); letter-spacing: .03em; text-transform: uppercase;
+  padding: 5px 10px; border-radius: 999px; background: var(--bg); }
+
+/* ---------- Inhalt ---------- */
+main {
+  max-width: 760px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 48px;
+  display: grid; gap: 14px;
+}
+.preview-note { font-size: .85rem; color: var(--warn); background: var(--warn-bg); border-radius: var(--r); padding: 10px 12px; }
+.sec-title { margin: 14px 0 0; font: 700 1.05rem var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); scroll-margin-top: 170px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+label.f { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); min-width: 0; }
+.inp { width: 100%; min-width: 0; border: 1px solid var(--line); background: var(--field); border-radius: 8px; padding: 10px 11px; font-size: 1rem; color: var(--ink); }
+.inp[readonly] { background: var(--bg); color: var(--muted); }
+.inp.bad { border-color: var(--fail); background: var(--fail-bg); }
+.unitwrap { display: flex; align-items: center; gap: 6px; }
+.unitwrap span { color: var(--muted); font-size: .9rem; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 12px; font-weight: 600; }
+.btn.accent { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+a.btn { text-decoration: none; color: var(--ink); display: inline-block; }
+
+/* Fotos */
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.photo { border: 2px dashed var(--line); border-radius: var(--r); aspect-ratio: 4 / 3; max-width: 100%; display: grid; place-items: center; text-align: center;
+  padding: 8px; position: relative; overflow: hidden; background: var(--bg); }
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.photo .lbl { font: 600 .95rem var(--f-head); position: relative; }
+.photo .sub { font-size: .8rem; color: var(--muted); position: relative; }
+.photo.has { border-style: solid; border-color: var(--ok); }
+.photo .tag { position: absolute; left: 6px; bottom: 6px; background: var(--card); color: var(--ink); font: 600 .8rem var(--f-head); padding: 2px 8px; border-radius: 999px; }
+.photo .del { position: absolute; right: 6px; top: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: .8rem; }
+.photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* Pruefpunkte */
+.item { gap: 8px; scroll-margin-top: 170px; }
+.item-head { display: flex; gap: 10px; align-items: flex-start; }
+.nr { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center;
+  font: 700 .95rem var(--f-head); font-variant-numeric: tabular-nums; }
+.item h3 { margin: 2px 0 0; font: 700 1.15rem/1.2 var(--f-head); text-wrap: balance; }
+.hint { margin: 0; color: var(--muted); font-size: .95rem; white-space: pre-line; }
+.warnline { margin: 0; color: var(--fail); font-weight: 600; }
+.settings { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; margin: 0; }
+.settings div { background: var(--bg); border-radius: 8px; padding: 6px 8px; }
+.settings dt { font-size: .75rem; color: var(--muted); }
+.settings dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.thumbs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.thumbs button { flex: none; border: 1px solid var(--line); border-radius: 8px; padding: 0; overflow: hidden; background: var(--bg); }
+.thumbs img { display: block; height: 92px; width: auto; max-width: none; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.msg { margin: 0; font-size: .9rem; font-weight: 600; }
+.msg.w { color: var(--warn); } .msg.f { color: var(--fail); }
+.states { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+.st { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 10px 6px; font-weight: 600; }
+.st[aria-pressed="true"].ok { background: var(--ok); border-color: var(--ok); color: var(--card); }
+.st[aria-pressed="true"].nok { background: var(--fail); border-color: var(--fail); color: var(--card); }
+.st[aria-pressed="true"].na { background: var(--na); border-color: var(--na); color: var(--card); }
+.auto { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.chip { border-radius: 8px; padding: 10px; font-weight: 600; text-align: center; }
+.s-open { background: var(--na-bg); color: var(--na); }
+.s-ok { background: var(--ok-bg); color: var(--ok); }
+.s-warn { background: var(--warn-bg); color: var(--warn); }
+.s-fail { background: var(--fail-bg); color: var(--fail); }
+.s-na { background: var(--na-bg); color: var(--na); }
+.item.done-ok { border-left: 4px solid var(--ok); }
+.item.done-fail { border-left: 4px solid var(--fail); }
+.item.done-warn { border-left: 4px solid var(--warn); }
+.item.done-na { border-left: 4px solid var(--na); }
+textarea.inp { min-height: 90px; resize: vertical; }
+.foot { text-align: center; color: var(--muted); font-size: .8rem; }
+
+/* Grossansicht + Dialog + Meldung */
+.lightbox { position: fixed; inset: 0; z-index: 20; background: var(--shade); display: grid; place-items: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.lightbox p { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center; color: #fff; font-size: .85rem; margin: 0; }
+.modal { position: fixed; inset: 0; z-index: 30; background: var(--shade); display: grid; place-items: center; padding: 16px; }
+.modal-box { background: var(--card); border-radius: 14px; padding: 18px; max-width: 420px; width: 100%; display: grid; gap: 14px; }
+.modal-box h2 { margin: 0; font: 700 1.3rem var(--f-head); }
+.modal-box p { margin: 0; color: var(--muted); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  background: var(--ink); color: var(--bg); border-radius: 10px; padding: 10px 14px; max-width: calc(100% - 32px); font-size: .92rem; }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<header class="bar">
+  <div class="bar-top">
+    <div class="brand"><img class="brand-logo" src="img/logo.jpg" alt="Elektro Ueli AG"><h1>IB-Protokoll EGS</h1></div>
+    <div class="progress" id="progress"><b>0</b> / 25</div>
+  </div>
+  <div class="meter"><i id="meter"></i></div>
+  <div class="actions">
+    <button class="act" id="btnNew" type="button">Neu</button>
+    <button class="act" id="btnOpen" type="button">Öffnen</button>
+    <button class="act" id="btnSave" type="button">Speichern</button>
+    <button class="act primary" id="btnPdf" type="button">PDF</button>
+  </div>
+  <nav class="jump" id="jump" aria-label="Abschnitte"></nav>
+</header>
+
+<main id="app"></main>
+
+<div class="lightbox" id="lightbox" hidden><img id="lbImg" alt=""><p>Tippen zum Schliessen</p></div>
+<div class="modal" id="modal" hidden><div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <h2 id="mTitle"></h2><p id="mText"></p>
+  <div class="row" style="justify-content:flex-end"><button class="btn" id="mNo" type="button">Abbrechen</button><button class="btn accent" id="mYes" type="button">OK</button></div>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+<input type="file" id="openFile" accept=".json,application/json" hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+"use strict";
+// VERSION - bei jeder Aenderung erhoehen und in sw.js (CACHE) gleich nachziehen
+const APP_VERSION = "1.0";
+const STORE_KEY = "egs-ib-entwurf-v1";
+const FUSE_FACTOR = 10, U_NETZ = 400;
+
+// ---------------- Checkliste (identisch zum PC-Tool, gleiche Schluessel) ----------------
+const HEAD = [
+  { k: "kunde", l: "Kunde" }, { k: "adresse", l: "Adresse / Standort" },
+  { k: "pv", l: "PV-Leistung (kWp)", ph: "z. B. 12.5", num: true }, { k: "techniker", l: "Techniker" },
+  { k: "sicherung", l: "Absicherung Batterie (A)", ph: "z. B. 40", num: true }, { k: "bess", l: "Max. Leistung BESS (kW, berechnet)", ro: true },
+  { k: "anlage", l: "Anlage" }, { k: "datum", l: "Datum" },
+  { k: "sn_wr", l: "SN Wechselrichter" }, { k: "sn_bms", l: "SN Batterie / BMS" },
+  { k: "sn_router", l: "SN Router", ph: "vom Typenschild" }
+];
+const T = (id, title, hint, images, extra) => Object.assign({ id, title, hint, images: images || [], fields: [] }, extra || {});
+const SECTIONS = [
+  { id: "anschluesse", title: "Anschlüsse & Verkabelung", short: "Anschlüsse", items: [
+    T("pos1", "Netzanschluss", "Netzkabel L1, L2, L3, N und PE an den AC-Klemmen angeschlossen.", ["netz"]),
+    T("pos2", "Router – Internet", "Internet-Kabel (LAN vom Kunden) am Router zuhinterst bei WAN eingesteckt.", ["router_wan", "schrank"]),
+    T("pos3", "Potenzialausgleich Batterie", "Potausgleich hinten an der Batterie angeschlossen. Zweiter Potausgleich an PE-Klemme Wechselrichter.", ["potausgleich"]),
+    T("pos4", "Potenzialausgleich Wechselrichter", "Potleitung vom Potenzialausgleich Batterie (Punkt 3) auf Erdungsschiene. Zusätzlich 16 mm² von Erdungsschiene auf PE-Klemme Backup.", ["wr_klemmen_pos4", "wr_uebersicht_ohne"]),
+    T("pe_grid", "PE-Verbindung PE-Schiene – PE Grid", "PE-Verbindung 16 mm² zwischen PE-Schiene und PE Grid erstellt (im Bild grün markiert).", ["pe_grid"]),
+    T("pos5a", "Bus Bilanzzähler (Acrel) → BMS", "Buskabel am Netz-/Bilanzzähler (Acrel) auf Klemme 21 / 22, am BMS auf Klemme A5 / B5 angeschlossen. Zweiter Pfeil (unten): Eastron-Zähler durchgeklemmt (G51 2x2 zum Zählereingang Wechselrichter).", ["bms_a5b5"]),
+    T("pos5b", "Zählereingang Wechselrichter (Eastron)", "G51 2x2 zum Wechselrichter durchgeklemmt, RJ45-Feldstecker (weiss/orange = A, orange = B) am Port „METER“.", ["wr_ports", "meter_pinout"],
+      { warning: "Achtung: RJ45-Stecker nach Code B (T568B) aufschalten – nicht nach Code A!" }),
+    T("pos6", "Einbau Zähler / Wandler", "Einbau nach HAK oder Wandler von PV eingeschlauft. Zähler in UV/HV eingebaut."),
+    T("pos7", "Generator", "Generatorkabel am Anschluss „SP“ angeschlossen, PE auf Erdungsschiene.", ["wr_klemmen_pos7"]),
+    T("pos8", "Backup", "Kabel vom Notabgang (Not-0-Netzschalter) HV am Anschluss „Backup“ angeschlossen.", ["wr_klemmen_pos8"]),
+    T("pos9", "Dongle", "Patchkabel im Dongle, Dongle am Wechselrichter (COM) eingesteckt, andere Seite am Router (LAN).", ["wr_uebersicht", "dongle"])
+  ]},
+  { id: "wandler", title: "Stromwandler", short: "Wandler", items: [
+    T("ct_richtung", "Einbaurichtung", "Strom fliesst von P1 (K) nach P2 (L): P1 zum Netz, P2 zur Installation.", ["wandler_richtung"])
+  ]},
+  { id: "zaehler", title: "Energiezähler", short: "Zähler", items: [
+    T("z_eastron", "Zähler Wechselrichter – Eastron SDM630MCT V2",
+      "1.  Enter lang drücken, Passwort 1000 eingeben.\n2.  Werte gemäss Tabelle einstellen, Ct1 siehe Feld unten. Sonst nichts verändern.\n3.  Am Schluss Enter lang drücken, bis „good“ erscheint.",
+      ["eastron", "wr_ports", "meter_pinout"], {
+        settings: [["Baud", "9600"], ["Pt rate", "0001"], ["Parität", "none"], ["Stop", "1"], ["Ct2", "5"], ["Pt2", "400"],
+                   ["Pulse", "200"], ["Rate", "0.01"], ["LP", "0"], ["dit", "60"], ["SyS", "3P4"], ["Adresse", "1"]],
+        fields: [{ id: "ct", label: "Wandler", ph: "z. B. 100/5" }, { id: "ctrate", label: "Ct1 am Zähler einstellen", computed: v => ctRate(v("ct"), 4) }] }),
+    T("z_acrel", "Netz-/Bilanzzähler – Acrel ADL400",
+      "1.  Enter lang drücken, Passwort 0001 eingeben.\n2.  Werte gemäss Tabelle einstellen, CT siehe Feld unten. Sonst nichts verändern.\n3.  Am Schluss Enter lang drücken, bis „save“ erscheint, mit „yes“ bestätigen.",
+      ["acrel_pass", "acrel_ct", "acrel_addr", "acrel_save", "bms_a5b5"], {
+        settings: [["CT", "Primärstrom / 5"], ["Adresse", "1"], ["Bus am Zähler", "Klemme 21 / 22"], ["Bus am BMS", "A5 / B5"]],
+        fields: [{ id: "ct", label: "Wandler", ph: "z. B. 100/5" }, { id: "ctrate", label: "CT am Zähler einstellen", computed: v => ctRate(v("ct"), 0) }] })
+  ]},
+  { id: "messungen", title: "Sichtprüfung & Messungen", short: "Messungen", items: [
+    T("ib_sicht", "Sichtprüfung", "Sichtprüfung aller elektrischen Anschlüsse."),
+    T("m_ik", "Kurzschlussstrom (IK)", "Mindest-IK = Absicherung Batterie × 10 (Absicherung oben in den Kopfdaten eintragen).", [], {
+      auto: true, fields: [{ id: "ik", label: "IK gemessen", unit: "A", num: true, min: 1, max: 1000000 }] }),
+    T("m_spannung", "Spannungsprüfung", "Leiter – N 230 V ± 10 % (207 – 253 V), Leiter – Leiter 400 V ± 10 % (360 – 440 V)."),
+    T("m_drehfeld", "Drehfeld", "Rechtsdrehfeld gemessen."),
+    T("m_fi", "FI-Prüfung (falls vorhanden)", "Auslösezeit max. 300 ms. Kein FI vorhanden → „n.a.“.", [], {
+      fields: [{ id: "typ", label: "FI-Typ", choices: ["10 mA", "30 mA", "300 mA"] }, { id: "ta", label: "Auslösezeit", unit: "ms", num: true, min: 0.1, max: 300 }] })
+  ]},
+  { id: "batterie", title: "Batterie in Betrieb nehmen", short: "Batterie", items: [
+    T("ib1", "Aerosol-Löschgerät", "Kabel vom Aerosol-Löschgerät (Transportsicherung) zusammengesteckt – Farbe auf Farbe.", ["aerosol"]),
+    T("ib2", "Batterieverbindungsstecker", "Mitgelieferte Batterieverbindungsstecker eingesteckt.", ["batt_stecker"]),
+    T("ib3", "Batterie einschalten", "Batterie von rechts nach links eingeschaltet, in der Reihenfolge 1 → 2 → 3 (siehe Bild).", ["batt_ein"])
+  ]},
+  { id: "app", title: "Solis-App", short: "Solis-App", items: [
+    T("app_anlage", "Anlage in der App angelegt", "Bluetooth-Verbindung mit der Solis-App zum Dongle hergestellt, Anlage hinzugefügt, QR-Code Wechselrichter und QR-Code Dongle gescannt."),
+    T("app_ct", "Wandlerverhältnis in der App geprüft", "Wandlerverhältnis in der App stimmt mit dem eingebauten Wandler überein."),
+    T("app_gen", "Generatorbetrieb konfiguriert", "Nur wenn ein Generator angeschlossen ist – sonst „n.a.“.")
+  ]}
+];
+const ITEMS = SECTIONS.flatMap(s => s.items);
+const PHOTOS = [{ k: "wr", l: "Typenschild Wechselrichter" }, { k: "bms", l: "Typenschild Batterie" }];
+
+// ---------------- Zustand ----------------
+let data = {}, photos = {};
+const get = k => (data[k] == null ? "" : String(data[k]));
+function defaults() {
+  if (!get("head.datum")) data["head.datum"] = new Date().toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric" });
+  if (!get("head.anlage")) data["head.anlage"] = "EGS 120";
+  data["head.bess"] = bessMax(get("head.sicherung"));
+}
+function persist() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ data, photos })); } catch (e) { /* Speicher voll oder gesperrt - Datei speichern bleibt moeglich */ }
+}
+function restore() {
+  try { const s = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); if (s) { data = s.data || {}; photos = s.photos || {}; } } catch (e) { }
+}
+
+// ---------------- Rechnen / Auswerten (wie PC-Tool) ----------------
+function num(s) { s = String(s == null ? "" : s).trim().replace(",", "."); if (!s) return NaN; const v = Number(s); return isFinite(v) ? v : NaN; }
+function fmt(v) { return v.toLocaleString("de-CH", { maximumFractionDigits: 2 }); }
+function bessMax(fuse) { const f = num(fuse); return f > 0 ? fmt(Math.floor(Math.sqrt(3) * U_NETZ * f / 1000)) : ""; }
+function ctRate(ct, pad) {
+  const t = String(ct || "").replace(/\s/g, "").toUpperCase().replace(/A/g, "");
+  const p = t.split("/"); const prim = num(p[0]); const sec = p.length > 1 ? num(p[1]) : 5;
+  if (!(prim > 0) || !(sec > 0)) return "";
+  const v = prim / sec;
+  if (v !== Math.floor(v)) return fmt(Math.round(v * 100) / 100) + "  (nicht ganzzahlig!)";
+  const r = String(v); return pad > 0 ? r.padStart(pad, "0") : r;
+}
+function evaluate(it) {
+  const st = get(it.id + ".state"), bad = new Set(), msgs = [];
+  let allFilled = true, rangeBad = false;
+  for (const f of it.fields) {
+    if (f.computed) continue;
+    const raw = get(it.id + "." + f.id).trim();
+    if (!raw) { allFilled = false; continue; }
+    if (!f.num) continue;
+    const v = num(raw);
+    if (isNaN(v)) { bad.add(f.id); rangeBad = true; msgs.push(f.label + ": keine Zahl"); continue; }
+    if ((f.min != null && v < f.min) || (f.max != null && v > f.max)) {
+      bad.add(f.id); rangeBad = true;
+      msgs.push(f.label + " = " + fmt(v) + " " + (f.unit || "") + " ausserhalb " + fmt(f.min) + " – " + fmt(f.max) + " " + (f.unit || ""));
+    }
+  }
+  const fuse = num(get("head.sicherung"));
+  if (it.id === "m_ik") {
+    const ik = num(get("m_ik.ik"));
+    if (!isNaN(ik)) {
+      if (!(fuse > 0)) msgs.push("Absicherung Batterie oben in den Kopfdaten eintragen – IK nicht geprüft");
+      else if (ik < fuse * FUSE_FACTOR) { rangeBad = true; bad.add("ik"); msgs.push("IK " + fmt(ik) + " A < Minimum " + fmt(fuse * FUSE_FACTOR) + " A (" + fmt(fuse) + " A × " + FUSE_FACTOR + ")"); }
+    }
+  }
+  if (it.id === "z_eastron" || it.id === "z_acrel") {
+    const ct = get(it.id + ".ct"); const prim = num(ct.split("/")[0]);
+    if (ct.indexOf("/") > 0 && prim > 0 && fuse > 0 && prim < fuse) msgs.push("Hinweis: Wandler " + fmt(prim) + " A < Absicherung Batterie " + fmt(fuse) + " A");
+  }
+  let state;
+  if (st === "na") state = "na";
+  else if (!it.auto) {
+    state = st === "ok" ? "ok" : st === "nok" ? "fail" : "open";
+    if (state === "ok" && bad.size) state = "fail"; else if (state === "ok" && msgs.length) state = "warn";
+  } else state = rangeBad ? "fail" : !allFilled ? "open" : msgs.length ? "warn" : "ok";
+  return { state, msgs, bad };
+}
+const STATE_TEXT = { ok: "i.O.", warn: "i.O. / Hinweis", fail: "nicht i.O.", na: "n.a.", open: "offen" };
+
+// ---------------- Aufbau der Seite ----------------
+const $ = id => document.getElementById(id);
+function el(tag, attrs, kids) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) { if (k === "text") e.textContent = attrs[k]; else if (k.startsWith("on")) e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
+  for (const c of [].concat(kids || [])) if (c != null) e.append(c);
+  return e;
+}
+function input(key, opts) {
+  const i = el("input", { class: "inp", id: "f-" + key.replace(/\./g, "-"), type: "text", autocomplete: "off" });
+  if (opts && opts.num) i.setAttribute("inputmode", "decimal");
+  if (opts && opts.ph) i.placeholder = opts.ph;
+  if (opts && opts.ro) i.readOnly = true;
+  i.value = get(key);
+  i.addEventListener("input", () => { data[key] = i.value; changed(key); });
+  return i;
+}
+
+function render() {
+  const app = $("app"); app.textContent = "";
+  const jump = $("jump"); jump.textContent = "";
+  const addJump = (id, label) => jump.append(el("a", { href: "#" + id, text: label, onclick: ev => { ev.preventDefault(); $(id).scrollIntoView({ behavior: "smooth" }); } }));
+
+  if (window.top !== window) app.append(el("p", { class: "preview-note", text: "Vorschau: Standortbestimmung ist hier nicht verfügbar. Fotos, Speichern und PDF funktionieren." }));
+
+  // Kopfdaten
+  addJump("s-kopf", "Kopfdaten");
+  app.append(el("h2", { class: "sec-title", id: "s-kopf", text: "Anlage / Kopfdaten" }));
+  const head = el("section", { class: "card" });
+  const g = el("div", { class: "grid2" });
+  for (const h of HEAD) g.append(el("label", { class: "f" }, [h.l, input("head." + h.k, h)]));
+  head.append(g);
+  // Geolokation
+  const geo = input("head.geo", { ph: "z. B. 47.37690, 8.54170" });
+  const map = el("a", { class: "btn", target: "_blank", rel: "noopener", text: "Karte ↗" });
+  const locate = el("button", { class: "btn accent", type: "button", text: "Standort ermitteln", onclick: () => findLocation(geo) });
+  head.append(el("label", { class: "f" }, ["Geolokation (Breite, Länge)", geo]), el("div", { class: "row" }, [locate, map]));
+  app.append(head);
+  updateMapLink(map);
+
+  // Fotos
+  addJump("s-fotos", "Fotos");
+  app.append(el("h2", { class: "sec-title", id: "s-fotos", text: "Fotos Typenschilder" }));
+  const pc = el("section", { class: "card" });
+  const pg = el("div", { class: "photos" });
+  for (const p of PHOTOS) pg.append(photoTile(p));
+  pc.append(pg, el("p", { class: "hint", text: "Antippen öffnet die Kamera. Die Fotos kommen ins PDF-Protokoll." }));
+  app.append(pc);
+
+  // Pruefpunkte
+  let nr = 0;
+  for (const s of SECTIONS) {
+    addJump("s-" + s.id, s.short);
+    app.append(el("h2", { class: "sec-title", id: "s-" + s.id, text: s.title }));
+    for (const it of s.items) app.append(itemCard(it, ++nr));
+  }
+
+  // Abschluss
+  addJump("s-ende", "Bemerkungen");
+  app.append(el("h2", { class: "sec-title", id: "s-ende", text: "Bemerkungen allgemein" }));
+  const ta = el("textarea", { class: "inp", id: "f-abschluss-note" }); ta.value = get("abschluss.note");
+  ta.addEventListener("input", () => { data["abschluss.note"] = ta.value; changed("abschluss.note"); });
+  app.append(el("section", { class: "card" }, [ta]));
+  app.append(el("p", { class: "foot", text: "EGS IB-Protokoll · Version " + APP_VERSION + " · Elektro Ueli AG" }));
+
+  refreshAll();
+}
+
+function itemCard(it, nr) {
+  const c = el("article", { class: "card item", id: "it-" + it.id });
+  c.append(el("div", { class: "item-head" }, [el("span", { class: "nr", text: String(nr) }), el("h3", { text: it.title })]));
+  if (it.hint) c.append(el("p", { class: "hint", text: it.hint }));
+  if (it.warning) c.append(el("p", { class: "warnline", text: "⚠ " + it.warning }));
+  if (it.settings) {
+    const dl = el("dl", { class: "settings" });
+    for (const [k, v] of it.settings) dl.append(el("div", {}, [el("dt", { text: k }), el("dd", { text: v })]));
+    c.append(dl);
+  }
+  if (it.images.length) {
+    const th = el("div", { class: "thumbs" });
+    for (const n of it.images) th.append(el("button", { type: "button", "aria-label": "Referenzbild gross anzeigen", onclick: () => showImage("img/" + n + ".jpg") },
+      [el("img", { src: "img/" + n + ".jpg", alt: "Referenzbild " + it.title, loading: "lazy" })]));
+    c.append(th);
+  }
+  if (it.fields.length) {
+    const fs = el("div", { class: "fields" });
+    for (const f of it.fields) {
+      const key = it.id + "." + f.id; let ctl;
+      if (f.choices) {
+        ctl = el("select", { class: "inp", id: "f-" + key.replace(/\./g, "-") }, [el("option", { value: "", text: "– wählen –" })].concat(f.choices.map(ch => el("option", { value: ch, text: ch }))));
+        ctl.value = get(key); ctl.addEventListener("change", () => { data[key] = ctl.value; changed(key); });
+      } else ctl = input(key, { num: f.num, ph: f.ph, ro: !!f.computed });
+      fs.append(el("label", { class: "f" }, [f.label, f.unit ? el("span", { class: "unitwrap" }, [ctl, el("span", { text: f.unit })]) : ctl]));
+    }
+    c.append(fs, el("p", { class: "msg", id: "msg-" + it.id }));
+  }
+  if (it.auto) {
+    c.append(el("div", { class: "auto" }, [el("div", { class: "chip", id: "chip-" + it.id }), stBtn(it, "na", "n.a.")]));
+  } else {
+    c.append(el("div", { class: "states" }, [stBtn(it, "ok", "✓ i.O."), stBtn(it, "nok", "✕ nicht i.O."), stBtn(it, "na", "n.a.")]));
+  }
+  c.append(input(it.id + ".note", { ph: "Bemerkung (optional)" }));
+  return c;
+}
+function stBtn(it, val, label) {
+  return el("button", { type: "button", class: "st " + val, "data-item": it.id, "data-val": val, "aria-pressed": "false", text: label,
+    onclick: () => { const k = it.id + ".state"; data[k] = get(k) === val ? "" : val; changed(k); } });
+}
+
+function photoTile(p) {
+  const t = el("label", { class: "photo", id: "ph-" + p.k });
+  const inp = el("input", { type: "file", accept: "image/*", capture: "environment", "aria-label": p.l + " fotografieren" });
+  inp.addEventListener("change", async () => {
+    const f = inp.files && inp.files[0]; inp.value = "";
+    if (!f) return;
+    try { photos[p.k] = await shrinkPhoto(f, 1600, .82); persist(); drawPhoto(p); toast(p.l + " gespeichert."); }
+    catch (e) { toast("Foto konnte nicht gelesen werden."); }
+  });
+  t.append(inp);
+  t._p = p;
+  return t;
+}
+function drawPhoto(p) {
+  const t = $("ph-" + p.k); const inp = t.querySelector("input");
+  t.textContent = ""; t.append(inp);
+  t.classList.toggle("has", !!photos[p.k]);
+  if (photos[p.k]) {
+    t.append(el("img", { src: photos[p.k], alt: p.l }), el("span", { class: "tag", text: p.l }),
+      el("button", { type: "button", class: "del", text: "Löschen", onclick: ev => { ev.preventDefault(); ev.stopPropagation(); delete photos[p.k]; persist(); drawPhoto(p); } }));
+  } else {
+    t.append(el("span", {}, [el("div", { class: "lbl", text: p.l }), el("div", { class: "sub", text: "Foto aufnehmen" })]));
+  }
+}
+function shrinkPhoto(file, maxSide, q) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement("canvas"); cv.width = Math.round(img.naturalWidth * s); cv.height = Math.round(img.naturalHeight * s);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+      res(cv.toDataURL("image/jpeg", q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("bild")); };
+    img.src = url;
+  });
+}
+
+// ---------------- Aktualisieren ----------------
+let saveTimer = 0;
+function changed(key) {
+  if (key === "head.sicherung") { data["head.bess"] = bessMax(get("head.sicherung")); const b = $("f-head-bess"); if (b) b.value = get("head.bess"); }
+  for (const it of ITEMS) for (const f of it.fields) if (f.computed) {
+    const k = it.id + "." + f.id; const v = f.computed(id => get(it.id + "." + id)); if (get(k) !== v) { data[k] = v; const i = $("f-" + k.replace(/\./g, "-")); if (i) i.value = v; }
+  }
+  if (key === "head.geo") updateMapLink();
+  refreshAll();
+  clearTimeout(saveTimer); saveTimer = setTimeout(persist, 400);
+}
+function refreshAll() {
+  let done = 0, fail = 0;
+  for (const it of ITEMS) {
+    const e = evaluate(it); const st = get(it.id + ".state");
+    if (e.state !== "open") done++; if (e.state === "fail") fail++;
+    const card = $("it-" + it.id); if (!card) continue;
+    card.classList.remove("done-ok", "done-fail", "done-warn", "done-na");
+    if (e.state !== "open") card.classList.add("done-" + e.state);
+    card.querySelectorAll(".st").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.val === st)));
+    const chip = $("chip-" + it.id);
+    if (chip) { chip.className = "chip s-" + e.state; chip.textContent = e.state === "open" ? "Wert eintragen" : e.state === "ok" ? "✓ i.O." : e.state === "fail" ? "✕ nicht i.O." : e.state === "warn" ? "⚠ i.O. mit Hinweis" : "n.a."; }
+    const m = $("msg-" + it.id);
+    if (m) { m.textContent = st === "na" ? "" : e.msgs.join(" · "); m.className = "msg " + (e.state === "fail" || e.bad.size ? "f" : "w"); }
+    for (const f of it.fields) { const i = $("f-" + (it.id + "." + f.id).replace(/\./g, "-")); if (i) i.classList.toggle("bad", e.bad.has(f.id) && st !== "na"); }
+  }
+  $("progress").innerHTML = "<b>" + done + "</b> / " + ITEMS.length + (fail ? " · " + fail + " ✕" : "");
+  $("meter").style.width = (100 * done / ITEMS.length) + "%";
+}
+function updateMapLink(a) {
+  a = a || document.querySelector('a.btn[target="_blank"]'); if (!a) return;
+  const c = parseGeo(get("head.geo"));
+  a.href = c ? "https://www.google.com/maps/search/?api=1&query=" + c[0].toFixed(6) + "," + c[1].toFixed(6) : "https://www.google.com/maps";
+  a.style.opacity = c ? "1" : ".5";
+}
+function parseGeo(s) {
+  const m = String(s || "").match(/(-?\d{1,2}(?:[.,]\d+)?)\s*[;,/ ]\s*(-?\d{1,3}(?:[.,]\d+)?)/);
+  if (!m) return null; const la = num(m[1]), lo = num(m[2]);
+  return (Math.abs(la) <= 90 && Math.abs(lo) <= 180) ? [la, lo] : null;
+}
+function findLocation(geoInput) {
+  if (!navigator.geolocation) { toast("Standort wird von diesem Gerät nicht unterstützt."); return; }
+  toast("Standort wird ermittelt …");
+  navigator.geolocation.getCurrentPosition(pos => {
+    const v = pos.coords.latitude.toFixed(5) + ", " + pos.coords.longitude.toFixed(5);
+    geoInput.value = v; data["head.geo"] = v; changed("head.geo");
+    toast("Standort eingetragen (± " + Math.round(pos.coords.accuracy) + " m). Mit „Karte“ prüfen.");
+  }, err => {
+    toast(err && err.code === 1 ? "Standort nicht erlaubt. In den Einstellungen freigeben oder von Hand eintragen." : "Standort nicht gefunden. Bitte von Hand eintragen.");
+  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+
+// ---------------- Grossansicht, Dialog, Meldung ----------------
+function showImage(src) { $("lbImg").src = src; $("lightbox").hidden = false; }
+$("lightbox").addEventListener("click", () => { $("lightbox").hidden = true; });
+function ask(title, text, yes) {
+  return new Promise(res => {
+    $("mTitle").textContent = title; $("mText").textContent = text; $("mYes").textContent = yes || "OK"; $("modal").hidden = false;
+    const done = v => { $("modal").hidden = true; $("mYes").onclick = $("mNo").onclick = null; res(v); };
+    $("mYes").onclick = () => done(true); $("mNo").onclick = () => done(false);
+  });
+}
+let toastTimer = 0;
+function toast(t) { const e = $("toast"); e.textContent = t; e.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { e.hidden = true; }, 3500); }
+
+// ---------------- Speichern / Oeffnen / Neu ----------------
+function safeName(s) { return (String(s || "").trim() || "ohne_Kunde").replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "_").slice(0, 60); }
+function isoDate() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+async function saveFile(filename, blob) {
+  // 1) Vorschau in Claude: Speichern ueber den Viewer   2) Handy: Teilen-Menue ("In Dateien sichern" / OneDrive)   3) normaler Download
+  try {
+    if (window.claude && typeof window.claude.use === "function") {
+      const dl = await window.claude.use("downloads");
+      if (dl) { await dl.save({ filename, data: blob }); return "saved"; }
+    }
+  } catch (e) { if (e && e.code === "declined") return "declined"; }
+  const file = new File([blob], filename, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: filename }); return "saved"; }
+    catch (e) { if (e && e.name === "AbortError") return "declined"; }
+  }
+  const a = el("a", { href: URL.createObjectURL(blob), download: filename }); document.body.append(a); a.click(); a.remove();
+  return "saved";
+}
+$("btnSave").addEventListener("click", async () => {
+  const doc = { format: "egs-ib-protokoll", formatVersion: 1, app: APP_VERSION, saved: new Date().toISOString(), data, photos };
+  const name = "IB-Protokoll_" + safeName(get("head.kunde")) + "_" + isoDate() + ".json";
+  const r = await saveFile(name, new Blob([JSON.stringify(doc)], { type: "application/json" }));
+  if (r === "saved") toast("Protokoll gespeichert: " + name);
+});
+$("btnOpen").addEventListener("click", () => $("openFile").click());
+$("openFile").addEventListener("change", async () => {
+  const f = $("openFile").files[0]; $("openFile").value = ""; if (!f) return;
+  let doc;
+  try { doc = JSON.parse(await f.text()); } catch (e) { toast("Diese Datei ist kein IB-Protokoll."); return; }
+  if (!doc || doc.format !== "egs-ib-protokoll" || typeof doc.data !== "object") { toast("Diese Datei ist kein IB-Protokoll."); return; }
+  if (Object.keys(data).some(k => !k.startsWith("head.datum") && !k.startsWith("head.anlage") && get(k)) &&
+      !(await ask("Protokoll öffnen?", "Das aktuelle Protokoll wird ersetzt. Ungespeicherte Änderungen gehen verloren.", "Öffnen"))) return;
+  data = doc.data || {}; photos = doc.photos || {}; defaults(); persist(); render(); PHOTOS.forEach(drawPhoto);
+  toast("Geöffnet: " + f.name); window.scrollTo(0, 0);
+});
+$("btnNew").addEventListener("click", async () => {
+  if (!(await ask("Neues Protokoll?", "Alle Eingaben und Fotos dieses Protokolls werden gelöscht. Vorher speichern, falls noch nicht geschehen.", "Neu beginnen"))) return;
+  data = {}; photos = {}; defaults(); persist(); render(); PHOTOS.forEach(drawPhoto); window.scrollTo(0, 0); toast("Neues Protokoll begonnen.");
+});
+
+// ---------------- PDF ----------------
+function pdfText(s) { return String(s || "").replace(/→/g, "->").replace(/[✓✕⚠↗]/g, "").replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/√/g, "W").trim(); }
+async function toDataUrl(src) { const b = await (await fetch(src)).blob(); return new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); }); }
+function imgSize(src) { return new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r([4, 3]); i.src = src; }); }
+$("btnPdf").addEventListener("click", async () => {
+  if (!window.jspdf) { toast("PDF-Erstellung ist gerade nicht verfügbar (Internet nötig beim ersten Laden)."); return; }
+  if (!get("head.kunde").trim()) { toast("Bitte zuerst den Kunden eintragen (Kopfdaten)."); $("f-head-kunde").focus(); return; }
+  const open = ITEMS.filter(it => evaluate(it).state === "open").length;
+  if (open && !(await ask("PDF erstellen?", open + " Prüfpunkt(e) sind noch offen. Trotzdem ein PDF erstellen?", "PDF erstellen"))) return;
+  toast("PDF wird erstellt …");
+  try {
+    const blob = await buildPdf();
+    const name = "IB-Protokoll_" + safeName(get("head.kunde")) + "_" + isoDate() + ".pdf";
+    const r = await saveFile(name, blob);
+    if (r === "saved") toast("PDF gespeichert: " + name);
+  } catch (e) { toast("PDF konnte nicht erstellt werden."); }
+});
+async function buildPdf() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const PW = 595.28, PH = 841.89, M = 42, CW = PW - 2 * M;
+  const INK = [27, 31, 36], GRAY = [96, 103, 112], LINE = [205, 210, 216], BLUE = [0, 84, 166];
+  const FILL = { ok: [223, 246, 229], warn: [255, 244, 206], fail: [253, 231, 233], na: [236, 238, 241], open: [255, 244, 206] };
+  const FORE = { ok: [15, 123, 63], warn: [138, 83, 0], fail: [196, 43, 28], na: [96, 103, 112], open: [138, 83, 0] };
+  const kunde = get("head.kunde").trim();
+  const runHead = "Inbetriebnahmeprotokoll " + get("head.anlage").trim() + "  –  " + kunde;
+  let y = 0;
+  const txt = (x, yy, size, bold, s, col, opt) => { doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor.apply(doc, col || INK); doc.text(pdfText(s), x, yy, opt); };
+  const wrap = (s, size, bold, w) => { doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size); return doc.splitTextToSize(pdfText(s), w); };
+  const newPage = first => {
+    if (!first) doc.addPage();
+    txt(M, 30, 8, false, runHead, GRAY); txt(PW - M, 30, 8, false, get("head.datum"), GRAY, { align: "right" });
+    doc.setDrawColor.apply(doc, LINE); doc.setLineWidth(.5); doc.line(M, 36, PW - M, 36); y = 52;
+  };
+  const need = h => { if (y + h > PH - 50) newPage(false); };
+  const band = title => { need(40); doc.setFillColor(236, 240, 246); doc.rect(M, y, CW, 20, "F"); txt(M + 8, y + 13.5, 10, true, title, BLUE); y += 28; };
+
+  newPage(true);
+  try { const logo = await toDataUrl("img/logo.jpg"); doc.addImage(logo, "JPEG", PW - M - 150, y - 2, 150, 150 * 341 / 1200); } catch (e) { }
+  txt(M, y + 18, 20, true, "Inbetriebnahmeprotokoll", INK);
+  txt(M, y + 36, 11, false, "Batteriespeicher " + get("head.anlage").trim() + "  ·  Verkabelung, Wandler, Zähler, Messungen", GRAY);
+  y += 54;
+
+  const heads = HEAD.concat([{ k: "geo", l: "Geolokation (Breite, Länge)" }]);
+  const colW = (CW - 16) / 2;
+  for (let i = 0; i < heads.length; i += 2) {
+    for (let c = 0; c < 2 && i + c < heads.length; c++) {
+      const x = M + c * (colW + 16), h = heads[i + c], v = get("head." + h.k).trim();
+      txt(x, y + 9, 7.5, false, h.l.toUpperCase(), GRAY);
+      txt(x, y + 22, 10.5, false, wrap(v || "–", 10.5, false, colW)[0], INK);
+      doc.setDrawColor.apply(doc, LINE); doc.line(x, y + 27, x + colW, y + 27);
+    }
+    y += 34;
+  }
+  y += 10;
+
+  let open = 0, fail = 0, warn = 0;
+  for (const it of ITEMS) { const s = evaluate(it).state; if (s === "open") open++; if (s === "fail") fail++; if (s === "warn") warn++; }
+  const ov = fail ? "fail" : open ? "open" : warn ? "warn" : "ok";
+  const ovText = fail ? fail + " Prüfpunkt(e) nicht in Ordnung" : open ? open + " Prüfpunkt(e) offen" : warn ? "Alle Prüfpunkte in Ordnung, " + warn + " mit Hinweis" : "Alle Prüfpunkte in Ordnung";
+  doc.setFillColor.apply(doc, FILL[ov]); doc.rect(M, y, CW, 30, "F"); doc.setFillColor.apply(doc, FORE[ov]); doc.rect(M, y, 4, 30, "F");
+  txt(M + 14, y + 19.5, 11.5, true, "Gesamtergebnis:  " + ovText, FORE[ov]); txt(PW - M - 10, y + 19.5, 9, false, ITEMS.length + " Prüfpunkte", FORE[ov], { align: "right" });
+  y += 44;
+
+  const stW = 78, textW = CW - stW - 12 - 22;
+  let nr = 0;
+  for (const s of SECTIONS) {
+    band(s.title);
+    for (const it of s.items) {
+      nr++;
+      const e = evaluate(it);
+      const lines = [];
+      for (const para of it.hint.split("\n")) for (const l of wrap(para, 8.5, false, textW)) lines.push([l, GRAY, 8.5]);
+      if (it.warning) for (const l of wrap(it.warning, 8.5, false, textW)) lines.push([l, FORE.fail, 8.5]);
+      if (it.settings) for (const l of wrap("Einstellwerte:  " + it.settings.map(p => p[0] + " " + p[1]).join("  ·  "), 8.5, false, textW)) lines.push([l, GRAY, 8.5]);
+      if (it.fields.length) {
+        const vals = it.fields.map(f => { const v = get(it.id + "." + f.id).trim(); return f.label + ": " + (v ? v + (f.unit ? " " + f.unit : "") : "–"); }).join("    ");
+        for (const l of wrap(vals, 9, false, textW)) lines.push([l, INK, 9]);
+      }
+      if (e.msgs.length && e.state !== "na") for (const l of wrap(e.msgs.join("   ·   "), 8.5, false, textW)) lines.push([l, FORE[e.state === "ok" ? "warn" : e.state], 8.5]);
+      const note = get(it.id + ".note").trim();
+      if (note) for (const l of wrap("Bemerkung: " + note, 8.5, false, textW)) lines.push([l, INK, 8.5]);
+      const h = 16 + lines.length * 11.5 + 6;
+      need(h);
+      txt(M, y + 11, 9, true, nr + ".", GRAY);
+      txt(M + 22, y + 11, 10, true, wrap(it.title, 10, true, textW)[0], INK);
+      let ly = y + 24;
+      for (const [l, col, size] of lines) { txt(M + 22, ly, size, false, l, col); ly += 11.5; }
+      doc.setFillColor.apply(doc, FILL[e.state]); doc.rect(PW - M - stW, y + 1, stW, 15, "F");
+      txt(PW - M - stW / 2, y + 11.5, 8.5, true, STATE_TEXT[e.state], FORE[e.state], { align: "center" });
+      y += h; doc.setDrawColor.apply(doc, LINE); doc.setLineWidth(.4); doc.line(M + 22, y - 3, PW - M, y - 3);
+    }
+    y += 8;
+  }
+
+  // Fotos der Typenschilder
+  const shot = PHOTOS.filter(p => photos[p.k]);
+  if (shot.length) {
+    band("Fotos Typenschilder");
+    for (const p of shot) {
+      const [w, h] = await imgSize(photos[p.k]);
+      let dw = CW, dh = CW * h / w; const maxH = 330; if (dh > maxH) { dh = maxH; dw = maxH * w / h; }
+      need(dh + 26);
+      txt(M, y + 10, 9.5, true, p.l, INK);
+      doc.addImage(photos[p.k], "JPEG", M, y + 16, dw, dh); y += dh + 30;
+    }
+  }
+
+  const gen = get("abschluss.note").trim();
+  if (gen) {
+    const gl = []; for (const para of gen.split("\n")) gl.push(...wrap(para, 9.5, false, CW - 22));
+    need(30 + gl.length * 12.5); band("Bemerkungen");
+    for (const l of gl) { txt(M + 22, y + 2, 9.5, false, l, INK); y += 12.5; }
+    y += 10;
+  }
+
+  need(80); y += 30;
+  const sw = (CW - 3 * 16) / 3;
+  ["Ort, Datum", "Unterschrift Techniker", "Unterschrift Kunde"].forEach((s, i) => {
+    const x = M + i * (sw + 16); doc.setDrawColor.apply(doc, INK); doc.setLineWidth(.6); doc.line(x, y, x + sw, y); txt(x, y + 12, 8, false, s, GRAY);
+  });
+
+  const n = doc.getNumberOfPages(), stamp = new Date().toLocaleString("de-CH", { dateStyle: "short", timeStyle: "short" });
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i); doc.setDrawColor.apply(doc, LINE); doc.setLineWidth(.5); doc.line(M, PH - 34, PW - M, PH - 34);
+    txt(M, PH - 22, 7.5, false, "Erstellt mit EGS IB-Protokoll " + APP_VERSION + "  ·  " + stamp, GRAY);
+    txt(PW - M, PH - 22, 7.5, false, "Seite " + i + " / " + n, GRAY, { align: "right" });
+  }
+  doc.setProperties({ title: "Inbetriebnahmeprotokoll " + kunde, creator: "EGS IB-Protokoll " + APP_VERSION });
+  return doc.output("blob");
+}
+
+// ---------------- Start ----------------
+restore(); defaults(); render(); PHOTOS.forEach(drawPhoto);
+// Offline-Betrieb (nur in der installierten App auf GitHub Pages, nicht in der Claude-Vorschau)
+if ("serviceWorker" in navigator && location.protocol === "https:" && window.top === window) {
+  navigator.serviceWorker.register("sw.js").catch(() => { });
+}
+</script>
+
+</body>
+</html>
