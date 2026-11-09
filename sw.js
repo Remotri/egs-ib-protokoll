@@ -1,6 +1,6 @@
 // Offline-Speicher der EGS-IB-App. Bei JEDER neuen Version CACHE hochzaehlen (gleich wie APP_VERSION in index.html),
 // dann laden die Handys beim naechsten Oeffnen mit Empfang die neuen Dateien.
-const CACHE = "egs-ib-1.0";
+const CACHE = "egs-ib-1.1";
 const IMAGES = ["acrel_addr", "acrel_ct", "acrel_pass", "acrel_save", "aerosol", "batt_ein", "batt_stecker", "bms_a5b5", "dongle",
   "eastron", "logo", "meter_pinout", "netz", "pe_grid", "potausgleich", "router_wan", "schrank", "wandler_richtung",
   "wr_klemmen_pos4", "wr_klemmen_pos7", "wr_klemmen_pos8", "wr_ports", "wr_uebersicht", "wr_uebersicht_ohne"];

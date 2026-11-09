@@ -203,7 +203,7 @@ textarea.inp { min-height: 90px; resize: vertical; }
 <script>
 "use strict";
 // VERSION - bei jeder Aenderung erhoehen und in sw.js (CACHE) gleich nachziehen
-const APP_VERSION = "1.0";
+const APP_VERSION = "1.1";
 const STORE_KEY = "egs-ib-entwurf-v1";
 const FUSE_FACTOR = 10, U_NETZ = 400;
 
@@ -287,7 +287,7 @@ function restore() {
 }
 
 // ---------------- Rechnen / Auswerten (wie PC-Tool) ----------------
-function num(s) { s = String(s == null ? "" : s).trim().replace(",", "."); if (!s) return NaN; const v = Number(s); return isFinite(v) ? v : NaN; }
+function num(s) { s = String(s == null ? "" : s).trim().replace(",", "."); const u = s.match(/^(.*?\d)\s*(A|V|kW|kWp|ms|Ohm|MOhm)$/i); if (u) s = u[1]; if (!s) return NaN; const v = Number(s); return isFinite(v) ? v : NaN; }
 function fmt(v) { return v.toLocaleString("de-CH", { maximumFractionDigits: 2 }); }
 function bessMax(fuse) { const f = num(fuse); return f > 0 ? fmt(Math.floor(Math.sqrt(3) * U_NETZ * f / 1000)) : ""; }
 function ctRate(ct, pad) {
